@@ -262,44 +262,42 @@ class Program
                                 foreach (string line in lines)
                                 {
                                     /*
-                                       ENHANCED REGEX
-                                       Captures URL + username + password
+                                       Try to extract domain from context, then use original pattern
                                     */
+                                    string originalPattern =
+                                        @"[a-zA-Z]https?\x20([a-zA-Z0-9\\._@\-]{1,64})\x20([^\x00\s]{1,64})\x20\x00";
 
-                                    string pattern =
-                                        @"[a-zA-Z](https?://[a-zA-Z0-9\.\-_/]+)\x20([a-zA-Z0-9\\._@\-]{1,64})\x20([^\x00\s]{1,64})\x20\x00";
-
-                                    MatchCollection matches =
-                                        Regex.Matches(
-                                            line,
-                                            pattern
-                                        );
+                                    MatchCollection matches = Regex.Matches(line, originalPattern);
 
                                     foreach (Match match in matches)
                                     {
                                         try
                                         {
-                                            string url =
-                                                match.Groups[1].Value
-                                                .Trim();
+                                            // Original pattern: username, password
+                                            string username = match.Groups[1].Value.Trim();
+                                            string password = match.Groups[2].Value.Trim();
 
-                                            string username =
-                                                match.Groups[2].Value
-                                                .Trim();
+                                            // Try to find domain in surrounding context
+                                            string url = "Unknown Site";
+                                            string context = line.Substring(
+                                                Math.Max(0, match.Index - 100),
+                                                Math.Min(200, line.Length - Math.Max(0, match.Index - 100))
+                                            );
 
-                                            string password =
-                                                match.Groups[3].Value
-                                                .Trim();
+                                            // Look for domain patterns in the context
+                                            Match domainMatch = Regex.Match(context, @"([a-zA-Z0-9\-]+\.[a-zA-Z]{2,6})");
+                                            if (domainMatch.Success)
+                                            {
+                                                url = domainMatch.Groups[1].Value;
+                                            }
 
                                             if (
-                                                url.Length < 8 ||
                                                 username.Length < 2 ||
                                                 password.Length < 2
                                             )
                                                 continue;
 
                                             if (
-                                                !IsPrintable(url) ||
                                                 !IsPrintable(username) ||
                                                 !IsPrintable(password)
                                             )
@@ -317,10 +315,7 @@ class Program
                                             )
                                                 continue;
 
-                                            if (
-                                                password.Length > 64 ||
-                                                url.Length > 200
-                                            )
+                                            if (password.Length > 64)
                                                 continue;
 
                                             string combined =
